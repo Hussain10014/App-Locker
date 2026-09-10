@@ -1,0 +1,18 @@
+{
+  "name": "ZenLock - Phone Locker",
+  "short_name": "ZenLock",
+  "description": "Distraction-free timed phone locker and focus timer",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#0a0c10",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

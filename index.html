@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>ZenLock - Native Phone Locker & Focus Chamber</title>
+  
+  <!-- PWA & Mobile Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0a0d14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ZenLock">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- App Background Effects -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="grid-overlay"></div>
+
+  <main class="app-container">
+    
+    <!-- Header -->
+    <header class="top-nav" id="topNav">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </div>
+        <span class="brand-name">ZenLock</span>
+        <span class="native-tag" id="nativeBadge">APP</span>
+      </div>
+      <button class="icon-btn" id="statsBtn" title="Session History">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10"></line>
+          <line x1="12" y1="20" x2="12" y2="4"></line>
+          <line x1="6" y1="20" x2="6" y2="14"></line>
+        </svg>
+      </button>
+    </header>
+
+    <!-- SECTION 1: SETUP SCREEN -->
+    <section class="screen active" id="setupScreen">
+      <div class="screen-header">
+        <span class="badge">HARDCORE FOCUS LOCKDOWN</span>
+        <h1 class="headline">Lock Your Phone.<br><span class="highlight">Reclaim Your Mind.</span></h1>
+        <p class="subtitle">Enter an unclosable focus chamber. Distractions blocked, notifications hidden.</p>
+      </div>
+
+      <!-- Presets Selector -->
+      <div class="preset-selector">
+        <label class="section-label">Select Lock Duration</label>
+        <div class="preset-grid">
+          <button class="preset-card" data-minutes="10">
+            <span class="preset-time">10</span>
+            <span class="preset-unit">MIN</span>
+            <span class="preset-tag">Sprint</span>
+          </button>
+          <button class="preset-card active" data-minutes="25">
+            <span class="preset-time">25</span>
+            <span class="preset-unit">MIN</span>
+            <span class="preset-tag">Pomodoro</span>
+          </button>
+          <button class="preset-card" data-minutes="45">
+            <span class="preset-time">45</span>
+            <span class="preset-unit">MIN</span>
+            <span class="preset-tag">Deep Work</span>
+          </button>
+          <button class="preset-card" data-minutes="60">
+            <span class="preset-time">60</span>
+            <span class="preset-unit">MIN</span>
+            <span class="preset-tag">Ultra Focus</span>
+          </button>
+        </div>
+
+        <!-- Custom Duration Option -->
+        <div class="custom-time-row">
+          <span class="custom-label">Custom Duration:</span>
+          <div class="custom-input-wrap">
+            <input type="number" id="customMinutes" min="1" max="720" placeholder="Minutes">
+            <button id="setCustomBtn" class="sm-btn">Set</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Locker Settings Options -->
+      <div class="settings-card">
+        <label class="section-label">Lockdown & Security Controls</label>
+        
+        <!-- Unbreakable Lock Mode (Cannot Exit before Timer Ends) -->
+        <div class="toggle-row highlight-row">
+          <div class="toggle-info">
+            <div class="row-with-badge">
+              <span class="toggle-title">Unbreakable Lock Mode</span>
+              <span class="pill-badge pill-danger">NO EXIT</span>
+            </div>
+            <span class="toggle-desc">Disables emergency unlock. You CANNOT quit until timer hits zero.</span>
+          </div>
+          <label class="switch switch-danger">
+            <input type="checkbox" id="unbreakableToggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Hide Notifications (DND) -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="row-with-badge">
+              <span class="toggle-title">Hide Notifications</span>
+              <span class="pill-badge pill-info">DND</span>
+            </div>
+            <span class="toggle-desc">Silences and hides banners & peeks during the lock session</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="hideNotificationsToggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Keep Screen Awake -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-title">Keep Screen Awake</span>
+            <span class="toggle-desc">Display stays active with glowing focus countdown</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="wakeLockToggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Audio Chimes -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-title">Zen Audio Chimes</span>
+            <span class="toggle-desc">Synthesized bell on lock start and unlock completion</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="soundToggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Permissions Prompt Card (for Native App or Android DND) -->
+      <div class="permissions-card" id="permissionsCard">
+        <div class="perm-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+        </div>
+        <div class="perm-text">
+          <span class="perm-title">Android System Protection</span>
+          <p class="perm-desc" id="permStatusText">Grant Do Not Disturb & Screen Pinning to block exit and hide notifications.</p>
+        </div>
+        <button class="perm-btn" id="requestPermBtn">Grant</button>
+      </div>
+
+      <!-- Action Button -->
+      <div class="action-footer">
+        <button class="primary-btn" id="startLockBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-icon">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <span id="lockBtnText">Engage Lock (25 Min)</span>
+        </button>
+        <p class="fullscreen-notice" id="lockNotice">Unbreakable mode enabled: phone cannot be unlocked until timer finishes.</p>
+      </div>
+    </section>
+
+    <!-- SECTION 2: ACTIVE LOCK SCREEN -->
+    <section class="screen" id="lockedScreen">
+      <div class="lock-shield-indicator">
+        <div class="shield-pulse"></div>
+        <div class="shield-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+        </div>
+        <span class="shield-status" id="shieldStatusText">PHONE LOCKED & BULL; NOTIFICATIONS HIDDEN</span>
+      </div>
+
+      <!-- Circular Timer Container -->
+      <div class="timer-viewport">
+        <div class="circle-container">
+          <svg class="progress-ring" viewBox="0 0 320 320">
+            <circle class="progress-ring-track" cx="160" cy="160" r="140" />
+            <circle class="progress-ring-fill" id="progressFill" cx="160" cy="160" r="140" />
+          </svg>
+          <div class="timer-display">
+            <span class="timer-digits" id="timeRemaining">25:00</span>
+            <span class="timer-mode-label" id="timerStatusLabel">UNBREAKABLE LOCK</span>
+            <div class="badge-row">
+              <div class="wake-badge" id="wakeBadge">
+                <span class="wake-dot"></span> Screen Awake
+              </div>
+              <div class="dnd-badge" id="dndBadge">
+                <span class="dnd-dot"></span> DND Active
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dynamic Motivational Quote -->
+      <div class="quote-box">
+        <p class="quote-text" id="quoteText">"Almost everything will work again if you unplug it for a few minutes, including you."</p>
+      </div>
+
+      <!-- Emergency Exit Area (Only visible when Unbreakable mode is OFF) -->
+      <div class="emergency-controls" id="emergencyControls">
+        <button class="emergency-btn" id="emergencyExitBtn">
+          Emergency Unlock
+        </button>
+        <div class="emergency-delay-box hidden" id="emergencyDelayBox">
+          <p class="emergency-warning">Hold on! Cooling down impulsivity...</p>
+          <div class="countdown-penalty-meter">
+            <div class="penalty-bar" id="penaltyBar"></div>
+          </div>
+          <p class="penalty-seconds" id="penaltySeconds">10s remaining</p>
+          <button class="cancel-penalty-btn" id="cancelEmergencyBtn">Stay in Lock</button>
+        </div>
+      </div>
+
+      <!-- Locked Warning Banner when Unbreakable Mode is active -->
+      <div class="unbreakable-banner" id="unbreakableBanner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="banner-icon">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        <span>Unbreakable Lock active. Exiting is disabled until timer completes.</span>
+      </div>
+    </section>
+
+    <!-- SECTION 3: SESSION COMPLETED SCREEN -->
+    <section class="screen" id="completedScreen">
+      <div class="completed-card">
+        <div class="trophy-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+            <path d="M4 22h16"></path>
+            <path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-2.34"></path>
+            <path d="M14 14.66V17c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-2.34"></path>
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"></path>
+          </svg>
+        </div>
+        <h2 class="completed-title">Lock Session Complete!</h2>
+        <p class="completed-msg">Phone successfully unlocked. Notifications restored. Great focus!</p>
+
+        <div class="stats-summary-grid">
+          <div class="stat-box">
+            <span class="stat-number" id="completedSessionTime">25m</span>
+            <span class="stat-title">Time Unlocked</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-number" id="streakCount">1</span>
+            <span class="stat-title">Today's Sessions</span>
+          </div>
+        </div>
+
+        <button class="primary-btn" id="returnHomeBtn">
+          New Lock Session
+        </button>
+      </div>
+    </section>
+
+    <!-- History / Stats Modal -->
+    <div class="modal-overlay" id="statsModal">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h3>Your Focus History</h3>
+          <button class="close-btn" id="closeStatsBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="stats-overview">
+            <div class="big-stat">
+              <span class="big-num" id="totalMinutesFocused">0</span>
+              <span class="big-lbl">Total Minutes Locked</span>
+            </div>
+            <div class="big-stat">
+              <span class="big-num" id="totalSessionsCount">0</span>
+              <span class="big-lbl">Sessions Completed</span>
+            </div>
+          </div>
+          <h4 class="history-subtitle">Recent Sessions</h4>
+          <div class="history-list" id="historyList">
+            <p class="empty-state">No completed sessions yet. Start your first phone lock!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Android Pinning / DND Modal Guide -->
+    <div class="modal-overlay" id="helpModal">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h3>How to Lock Android Screen</h3>
+          <button class="close-btn" id="closeHelpBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="guide-step">
+            <span class="step-num">1</span>
+            <div class="step-info">
+              <strong>Enable Do Not Disturb:</strong>
+              <p>Pull down notification bar and tap "Do Not Disturb" to hide all notification popups.</p>
+            </div>
+          </div>
+          <div class="guide-step">
+            <span class="step-num">2</span>
+            <div class="step-info">
+              <strong>Android App Pinning (Screen Pinning):</strong>
+              <p>Swipe up to view Recent Apps &rarr; Tap the app icon above the card &rarr; Tap <strong>"Pin this app"</strong>.</p>
+              <p class="step-tip">This locks the screen inside ZenLock and disables the Home and notification bar!</p>
+            </div>
+          </div>
+          <button class="primary-btn" id="understandBtn" style="margin-top: 16px;">Got It!</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

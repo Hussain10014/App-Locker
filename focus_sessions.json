@@ -1,0 +1,36 @@
+[
+  {
+    "event": "completed",
+    "minutes": 25,
+    "server_received_at": "2026-09-10 19:08:57"
+  },
+  {
+    "event": "start",
+    "minutes": 5,
+    "timestamp": "2026-09-10T13:44:07.436Z",
+    "server_received_at": "2026-09-10 19:14:08"
+  },
+  {
+    "event": "aborted",
+    "minutes": 5,
+    "timestamp": "2026-09-10T13:44:38.098Z",
+    "server_received_at": "2026-09-10 19:14:39"
+  },
+  {
+    "event": "start",
+    "minutes": 1,
+    "timestamp": "2026-09-10T13:44:55.880Z",
+    "server_received_at": "2026-09-10 19:14:57"
+  },
+  {
+    "event": "completed",
+    "minutes": 1,
+    "timestamp": "2026-09-10T13:45:55.882Z",
+    "server_received_at": "2026-09-10 19:15:56"
+  },
+  {
+    "event": "completed",
+    "minutes": 25,
+    "server_received_at": "2026-09-10 19:23:54"
+  }
+]
