@@ -9,6 +9,7 @@ const state = {
   selectedMinutes: 25,
   secondsRemaining: 25 * 60,
   totalDurationSeconds: 25 * 60,
+  lockEndTime: null, // wall-clock timestamp (ms) when the session should end
   timerInterval: null,
   wakeLock: null,
   unbreakableMode: true,
@@ -100,7 +101,7 @@ function checkNativeEnvironment() {
   if (state.isNativeApp) {
     nativeBadge.style.display = 'inline-block';
     nativeBadge.textContent = 'NATIVE';
-    
+
     // Check if DND permission is granted in Android
     const hasDnd = window.AndroidLocker.isDNDGranted ? window.AndroidLocker.isDNDGranted() : false;
     if (hasDnd) {
@@ -243,6 +244,17 @@ document.addEventListener('visibilitychange', async () => {
   if (state.wakeLock !== null && document.visibilityState === 'visible' && lockedScreen.classList.contains('active')) {
     await requestScreenWakeLock();
   }
+  // Whenever we come back into view (e.g. screen turned back on), immediately
+  // resync the displayed time against the true wall-clock end time so any
+  // drift while the screen/CPU was throttled is instantly corrected.
+  if (document.visibilityState === 'visible' && lockedScreen.classList.contains('active') && state.lockEndTime) {
+    const remainingMs = state.lockEndTime - Date.now();
+    state.secondsRemaining = Math.max(0, Math.round(remainingMs / 1000));
+    updateTimerDisplay();
+    if (remainingMs <= 0) {
+      completeSession();
+    }
+  }
 });
 
 // ============================================================================
@@ -276,7 +288,7 @@ function exitFullscreen() {
 // ============================================================================
 function showScreen(screenId) {
   [setupScreen, lockedScreen, completedScreen].forEach(scr => scr.classList.remove('active'));
-  
+
   if (screenId === 'setup') {
     setupScreen.classList.add('active');
     topNav.style.display = 'flex';
@@ -381,14 +393,25 @@ startLockBtn.addEventListener('click', async () => {
   notifyBackend('start', state.selectedMinutes);
 });
 
+// ----------------------------------------------------------------------------
+// FIX 2: Wall-clock based countdown.
+// Instead of just decrementing a counter every tick (which permanently drifts
+// if ticks get delayed by Doze / CPU throttling while the screen is off), we
+// compute a fixed end timestamp up front and always derive the remaining time
+// from Date.now(). If ticks lag or get skipped, the next tick that does fire
+// will "catch up" instantly to the correct remaining time instead of running
+// the session far longer than intended.
+// ----------------------------------------------------------------------------
 function startTimer() {
+  state.lockEndTime = Date.now() + state.secondsRemaining * 1000;
   updateTimerDisplay();
-  
+
   state.timerInterval = setInterval(() => {
-    state.secondsRemaining--;
+    const remainingMs = state.lockEndTime - Date.now();
+    state.secondsRemaining = Math.max(0, Math.round(remainingMs / 1000));
     updateTimerDisplay();
 
-    if (state.secondsRemaining <= 0) {
+    if (remainingMs <= 0) {
       completeSession();
     }
   }, 1000);
@@ -429,6 +452,7 @@ function stopTimer() {
     clearInterval(state.quoteInterval);
     state.quoteInterval = null;
   }
+  state.lockEndTime = null;
 }
 
 // ============================================================================
@@ -483,7 +507,7 @@ emergencyExitBtn.addEventListener('click', () => {
     const elapsed = Date.now() - startTime;
     const remaining = Math.max(0, totalMs - elapsed);
     const secs = Math.ceil(remaining / 1000);
-    
+
     penaltySecondsEl.textContent = `${secs}s remaining`;
     penaltyBar.style.width = `${(remaining / totalMs) * 100}%`;
 
