@@ -6,10 +6,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.provider.Settings;
+import android.util.Log;
 import android.webkit.JavascriptInterface;
 import android.widget.Toast;
 
 public class WebAppInterface {
+    private static final String TAG = "ZenLockBridge";
     private final Activity activity;
     private final NotificationManager notificationManager;
     private int previousFilter = NotificationManager.INTERRUPTION_FILTER_ALL;
@@ -17,7 +19,13 @@ public class WebAppInterface {
 
     public WebAppInterface(Activity activity) {
         this.activity = activity;
-        this.notificationManager = (NotificationManager) activity.getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManager nm = null;
+        try {
+            nm = (NotificationManager) activity.getSystemService(Context.NOTIFICATION_SERVICE);
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed to get NotificationManager", t);
+        }
+        this.notificationManager = nm;
     }
 
     public boolean isLockActive() {
@@ -29,10 +37,14 @@ public class WebAppInterface {
      */
     @JavascriptInterface
     public boolean isDNDGranted() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            return notificationManager != null && notificationManager.isNotificationPolicyAccessGranted();
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && notificationManager != null) {
+                return notificationManager.isNotificationPolicyAccessGranted();
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "Error checking DND permission", t);
         }
-        return true;
+        return false;
     }
 
     /**
@@ -40,12 +52,16 @@ public class WebAppInterface {
      */
     @JavascriptInterface
     public void requestDNDPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!isDNDGranted()) {
-                Intent intent = new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS);
-                activity.startActivity(intent);
-                Toast.makeText(activity, "Find 'ZenLock' and toggle ON to allow hiding notifications", Toast.LENGTH_LONG).show();
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (!isDNDGranted()) {
+                    Intent intent = new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS);
+                    activity.startActivity(intent);
+                    Toast.makeText(activity, "Find 'ZenLock' and switch ON to allow hiding notifications", Toast.LENGTH_LONG).show();
+                }
             }
+        } catch (Throwable t) {
+            Log.e(TAG, "Error opening DND settings", t);
         }
     }
 
@@ -54,21 +70,19 @@ public class WebAppInterface {
      */
     @JavascriptInterface
     public void setDND(boolean enable) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && notificationManager != null) {
-            if (isDNDGranted()) {
-                try {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && notificationManager != null) {
+                if (isDNDGranted()) {
                     if (enable) {
                         previousFilter = notificationManager.getCurrentInterruptionFilter();
-                        // Silence & hide all notifications, peek banners, and alerts
                         notificationManager.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE);
                     } else {
-                        // Restore previous setting
                         notificationManager.setInterruptionFilter(previousFilter);
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
                 }
             }
+        } catch (Throwable t) {
+            Log.e(TAG, "Error toggling DND", t);
         }
     }
 
@@ -85,8 +99,8 @@ public class WebAppInterface {
                     activity.startLockTask();
                     Toast.makeText(activity, "ZenLock Engaged. Screen is pinned.", Toast.LENGTH_SHORT).show();
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
+            } catch (Throwable t) {
+                Log.w(TAG, "startLockTask warning (App Pinning must be enabled in Settings)", t);
             }
         });
     }
@@ -103,14 +117,18 @@ public class WebAppInterface {
                     activity.stopLockTask();
                     Toast.makeText(activity, "Session Complete. Screen Unlocked.", Toast.LENGTH_SHORT).show();
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
+            } catch (Throwable t) {
+                Log.w(TAG, "stopLockTask error", t);
             }
         });
     }
 
     @JavascriptInterface
     public void showToast(String message) {
-        activity.runOnUiThread(() -> Toast.makeText(activity, message, Toast.LENGTH_SHORT).show());
+        activity.runOnUiThread(() -> {
+            try {
+                Toast.makeText(activity, message, Toast.LENGTH_SHORT).show();
+            } catch (Throwable ignored) {}
+        });
     }
 }
