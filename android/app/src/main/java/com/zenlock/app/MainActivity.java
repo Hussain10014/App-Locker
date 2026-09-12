@@ -2,6 +2,8 @@ package com.zenlock.app;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.content.Context;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -152,6 +154,50 @@ public class MainActivity extends Activity {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             hideSystemBars();
+        }
+    }
+
+    /**
+     * Whenever the Activity comes back to the foreground -- e.g. the screen
+     * was turned off and back on, or ZenLockAccessibilityService just bounced
+     * the app back here after an unpin/escape attempt -- do two things:
+     *   1. Force the WebView to re-run its JS resync logic immediately
+     *      instead of waiting on a possibly-throttled setInterval tick.
+     *   2. If a lock session is supposed to be active but Lock Task Mode is
+     *      no longer engaged (i.e. the user just did swipe-up-and-hold to
+     *      unpin), re-engage it immediately so the pin itself is restored,
+     *      not just the app.
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        try {
+            if (webView != null) {
+                webView.onResume();
+                webView.evaluateJavascript(
+                    "if (window.zenLockResync) { window.zenLockResync(); }",
+                    null
+                );
+            }
+
+            if (webAppInterface != null && webAppInterface.isLockActive()
+                    && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                boolean inLockTask = false;
+                ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+                if (am != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        inLockTask = am.getLockTaskModeState() != ActivityManager.LOCK_TASK_MODE_NONE;
+                    } else {
+                        inLockTask = am.isInLockTaskMode();
+                    }
+                }
+                if (!inLockTask) {
+                    Log.d(TAG, "Lock session active but not pinned -- re-engaging Lock Task Mode");
+                    startLockTask();
+                }
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "Error resyncing on resume", t);
         }
     }
 
