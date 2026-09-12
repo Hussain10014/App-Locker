@@ -286,6 +286,64 @@ function resyncTimerFromWallClock() {
 window.zenLockResync = resyncTimerFromWallClock;
 
 // ============================================================================
+// TRUE EMERGENCY FAILSAFE
+// A full, uninterrupted 5-second hold on the shield/status indicator always
+// unlocks immediately, bypassing Unbreakable Mode entirely -- no cooldown,
+// no confirmation. This exists specifically so that a real emergency is
+// never blocked by the app's own restrictions. It is deliberately NOT a
+// quick tap: releasing before the full 5 seconds resets the hold to zero,
+// so it can't be triggered by accident or by a momentary impulse, but a
+// genuinely deliberate hold always works.
+//
+// This is intentionally a bit hidden rather than a labeled button (a
+// visible "emergency exit" button would just get used as the normal exit
+// and defeat the app's purpose) -- but make sure YOU remember it exists,
+// and consider telling a trusted person about it too.
+// ============================================================================
+const FAILSAFE_HOLD_MS = 5000;
+let failsafeTimer = null;
+let failsafeStartTime = null;
+const shieldIndicator = document.querySelector('.lock-shield-indicator');
+
+function startFailsafeHold() {
+  if (failsafeTimer || !lockedScreen.classList.contains('active')) return;
+  failsafeStartTime = Date.now();
+  shieldStatusText.textContent = 'HOLD FOR EMERGENCY UNLOCK...';
+  failsafeTimer = setInterval(() => {
+    if (Date.now() - failsafeStartTime >= FAILSAFE_HOLD_MS) {
+      cancelFailsafeHold();
+      triggerEmergencyOverride();
+    }
+  }, 100);
+}
+
+function cancelFailsafeHold() {
+  if (failsafeTimer) {
+    clearInterval(failsafeTimer);
+    failsafeTimer = null;
+  }
+  if (lockedScreen.classList.contains('active')) {
+    shieldStatusText.textContent = state.hideNotifications
+      ? 'PHONE LOCKED • NOTIFICATIONS HIDDEN'
+      : 'PHONE LOCKED • FOCUS IN PROGRESS';
+  }
+}
+
+function triggerEmergencyOverride() {
+  if (state.isNativeApp && window.AndroidLocker.showToast) {
+    window.AndroidLocker.showToast('Emergency override — ZenLock unlocked.');
+  }
+  abortSession();
+}
+
+if (shieldIndicator) {
+  shieldIndicator.addEventListener('pointerdown', startFailsafeHold);
+  shieldIndicator.addEventListener('pointerup', cancelFailsafeHold);
+  shieldIndicator.addEventListener('pointerleave', cancelFailsafeHold);
+  shieldIndicator.addEventListener('pointercancel', cancelFailsafeHold);
+}
+
+// ============================================================================
 // Fullscreen Control
 // ============================================================================
 function enterFullscreen() {
