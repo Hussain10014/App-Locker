@@ -102,23 +102,41 @@ function checkNativeEnvironment() {
     nativeBadge.style.display = 'inline-block';
     nativeBadge.textContent = 'NATIVE';
 
-    // Check if DND permission is granted in Android
+    // Check native permissions in priority order: DND -> exact alarm -> accessibility
     const hasDnd = window.AndroidLocker.isDNDGranted ? window.AndroidLocker.isDNDGranted() : false;
-    if (hasDnd) {
+    const hasAlarm = window.AndroidLocker.isExactAlarmGranted ? window.AndroidLocker.isExactAlarmGranted() : true;
+    const hasAccessibility = window.AndroidLocker.isAccessibilityGranted ? window.AndroidLocker.isAccessibilityGranted() : true;
+
+    if (hasDnd && hasAlarm && hasAccessibility) {
       permissionsCard.style.display = 'none';
-    } else {
+    } else if (!hasDnd) {
       permStatusText.textContent = 'Tap Grant to allow ZenLock to hide incoming notifications during lock sessions.';
       requestPermBtn.textContent = 'Grant DND';
+      requestPermBtn.dataset.mode = 'dnd';
+    } else if (!hasAlarm) {
+      permStatusText.textContent = 'Tap Grant to allow ZenLock to schedule the exact unlock time (Alarms & reminders).';
+      requestPermBtn.textContent = 'Grant Alarm';
+      requestPermBtn.dataset.mode = 'alarm';
+    } else {
+      permStatusText.textContent = 'Tap Grant, then switch ON the ZenLock service to block escape attempts. If the toggle looks greyed out, first go to Settings > Apps > ZenLock > ⋮ > "Allow restricted settings".';
+      requestPermBtn.textContent = 'Grant Lock';
+      requestPermBtn.dataset.mode = 'accessibility';
     }
   } else {
     nativeBadge.style.display = 'none';
     permStatusText.textContent = 'For 100% unclosable mode, tap "Guide" to use Android App Pinning & Do Not Disturb.';
     requestPermBtn.textContent = 'Guide';
+    requestPermBtn.dataset.mode = 'guide';
   }
 }
 
 requestPermBtn.addEventListener('click', () => {
-  if (state.isNativeApp && window.AndroidLocker.requestDNDPermission) {
+  const mode = requestPermBtn.dataset.mode;
+  if (state.isNativeApp && mode === 'accessibility' && window.AndroidLocker.requestAccessibilityPermission) {
+    window.AndroidLocker.requestAccessibilityPermission();
+  } else if (state.isNativeApp && mode === 'alarm' && window.AndroidLocker.requestExactAlarmPermission) {
+    window.AndroidLocker.requestExactAlarmPermission();
+  } else if (state.isNativeApp && window.AndroidLocker.requestDNDPermission) {
     window.AndroidLocker.requestDNDPermission();
   } else {
     helpModal.classList.add('open');
@@ -244,18 +262,28 @@ document.addEventListener('visibilitychange', async () => {
   if (state.wakeLock !== null && document.visibilityState === 'visible' && lockedScreen.classList.contains('active')) {
     await requestScreenWakeLock();
   }
-  // Whenever we come back into view (e.g. screen turned back on), immediately
-  // resync the displayed time against the true wall-clock end time so any
-  // drift while the screen/CPU was throttled is instantly corrected.
-  if (document.visibilityState === 'visible' && lockedScreen.classList.contains('active') && state.lockEndTime) {
-    const remainingMs = state.lockEndTime - Date.now();
-    state.secondsRemaining = Math.max(0, Math.round(remainingMs / 1000));
-    updateTimerDisplay();
-    if (remainingMs <= 0) {
-      completeSession();
-    }
+  if (document.visibilityState === 'visible') {
+    resyncTimerFromWallClock();
+    checkNativeEnvironment(); // refresh permission card after returning from Settings
   }
 });
+
+// ============================================================================
+// Resync helper - called from visibilitychange above AND directly by native
+// Android (MainActivity.onResume) via window.zenLockResync(), so the display
+// snaps to the correct remaining time the instant the screen comes back on,
+// instead of waiting for a possibly-throttled setInterval tick to catch up.
+// ============================================================================
+function resyncTimerFromWallClock() {
+  if (!lockedScreen.classList.contains('active') || !state.lockEndTime) return;
+  const remainingMs = state.lockEndTime - Date.now();
+  state.secondsRemaining = Math.max(0, Math.round(remainingMs / 1000));
+  updateTimerDisplay();
+  if (remainingMs <= 0) {
+    completeSession();
+  }
+}
+window.zenLockResync = resyncTimerFromWallClock;
 
 // ============================================================================
 // Fullscreen Control
@@ -386,6 +414,13 @@ startLockBtn.addEventListener('click', async () => {
     window.AndroidLocker.startLockTask();
   }
 
+  // NEW: hand the real end time to native Android so it can guarantee the
+  // unlock (DND restore) fires exactly on time via AlarmManager, even if the
+  // screen is off and this page's own JS timers get throttled.
+  if (state.isNativeApp && window.AndroidLocker.scheduleAutoUnlock) {
+    window.AndroidLocker.scheduleAutoUnlock(state.totalDurationSeconds * 1000);
+  }
+
   showScreen('locked');
   startTimer();
   startQuoteRotation();
@@ -468,6 +503,7 @@ function completeSession() {
   if (state.isNativeApp) {
     if (window.AndroidLocker.setDND) window.AndroidLocker.setDND(false);
     if (window.AndroidLocker.stopLockTask) window.AndroidLocker.stopLockTask();
+    if (window.AndroidLocker.cancelAutoUnlock) window.AndroidLocker.cancelAutoUnlock();
   }
 
   saveSession(state.selectedMinutes);
@@ -536,6 +572,7 @@ function abortSession() {
   if (state.isNativeApp) {
     if (window.AndroidLocker.setDND) window.AndroidLocker.setDND(false);
     if (window.AndroidLocker.stopLockTask) window.AndroidLocker.stopLockTask();
+    if (window.AndroidLocker.cancelAutoUnlock) window.AndroidLocker.cancelAutoUnlock();
   }
 
   emergencyDelayBox.classList.add('hidden');
