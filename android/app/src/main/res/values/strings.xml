@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ZenLock</string>
+    <string name="accessibility_service_description">Keeps ZenLock in the foreground during an active focus lock session.</string>
 </resources>
